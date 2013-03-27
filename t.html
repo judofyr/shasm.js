@@ -1,0 +1,19 @@
+<script src="sha256.js"></script>
+<script>
+  var data = new ArrayBuffer(12);
+  var view = new Uint8Array(data);
+  var str = "Hello world!";
+
+  for (var i = 0; i < str.length; i++) {
+    view[i] = str.charCodeAt(i);
+  }
+
+  document.write(sha256(data));
+  document.write('<br>');
+
+  var now = new Date;
+  var n = i = 100000;
+  while (i--) sha256(data, true);
+  document.write("Computed " + n + " hashes in " + (new Date - now) + " ms");
+</script>
+
