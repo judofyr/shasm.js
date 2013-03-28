@@ -2,13 +2,25 @@
   // Adapted from https://github.com/progranism/Bitcoin-JavaScript-Miner/blob/master/sha256.js
   // TODO: Handle more than one block
   // TODO: Change API to support updates
+
+  // Heap structure (in 32-bit numbers)
+  //    0 -  63: K array
+  //   64 - 127: W array
+  //  128 - 135: H array
+  //  136      : Number of blocks
+  //  137 - ...: blocks
   function module(stdlib, foreign, heap) {
     "use asm";
 
     var H = new stdlib.Int32Array(heap);
-    var H8 = new stdlib.Uint8Array(heap);
+    var B = new stdlib.Uint8Array(heap);
 
-    function endian_swap(x){
+    var iW = 256;
+    var iH = 512;
+    var iN = 544;
+    var iB = 548;
+
+    function endian_swap(x) {
       x = x|0;
       return (
         (x>>>24) | 
@@ -64,71 +76,97 @@
       return (S(x, 17) ^ S(x, 19) ^ R(x, 10))|0;
     }
 
-    function run() {
-      var h0 = 0x6A09E667
-        , h1 = 0xBB67AE85
-        , h2 = 0x3C6EF372
-        , h3 = 0xA54FF53A
-        , h4 = 0x510E527F
-        , h5 = 0x9B05688C
-        , h6 = 0x1F83D9AB
-        , h7 = 0x5BE0CD19;
+    function init() {
+      H[128] = 0x6A09E667;
+      H[129] = 0xBB67AE85;
+      H[130] = 0x3C6EF372;
+      H[131] = 0xA54FF53A;
+      H[132] = 0x510E527F;
+      H[133] = 0x9B05688C;
+      H[134] = 0x1F83D9AB;
+      H[135] = 0x5BE0CD19;
+    }
 
-      var a = 0x6A09E667
-        , b = 0xBB67AE85
-        , c = 0x3C6EF372
-        , d = 0xA54FF53A
-        , e = 0x510E527F
-        , f = 0x9B05688C
-        , g = 0x1F83D9AB
-        , h = 0x5BE0CD19;
+    function run() {
+      var h0 = 0, h1 = 0, h2 = 0, h3 = 0, h4 = 0, h5 = 0, h6 = 0, h7 = 0;
+      var a = 0, b = 0, c = 0, d = 0, e = 0, f = 0, g = 0, h = 0;
 
       var W = 256;
-      var start = 516;
+      var start = 548; // where the blocks start
+
       var i = 0;
       var s0 = 0, s1 = 0, maj = 0, t2 = 0, ch = 0, t1 = 0;
+      var blocks = 0;
 
-      i = 0;
-      while ((i|0) < 256) {
-        if ((i|0) < 64) {
-          H[(W+i)>>2] = endian_swap(H[(start+i)>>2]|0);
-        } else {
-          s0 = Gamma0(H[(W+i-60)>>2]|0);
-          s1 = Gamma1(H[(W+i-8)>>2]|0);
-          H[(W+i)>>2] = (H[(W+i-64)>>2]|0) + s0 + (H[(W+i-28)>>2]|0) + s1;
+      h0 = H[128]|0;
+      h1 = H[129]|0;
+      h2 = H[130]|0;
+      h3 = H[131]|0;
+      h4 = H[132]|0;
+      h5 = H[133]|0;
+      h6 = H[134]|0;
+      h7 = H[135]|0;
+
+      // Loop over the blocks
+      for (blocks = H[136]|0; blocks; blocks = (blocks - 1)|0) {
+        a = h0;
+        b = h1;
+        c = h2;
+        d = h3;
+        e = h4;
+        f = h5;
+        g = h6;
+        h = h7;
+
+        for (i = 0; (i|0) < 256; i = (i + 4)|0) {
+          if ((i|0) < 64) {
+            H[(W+i)>>2] = endian_swap(H[(start+i)>>2]|0);
+          } else {
+            s0 = Gamma0(H[(W+i-60)>>2]|0);
+            s1 = Gamma1(H[(W+i-8)>>2]|0);
+            H[(W+i)>>2] = (H[(W+i-64)>>2]|0) + s0 + (H[(W+i-28)>>2]|0) + s1;
+          }
+
+          s0 = Sigma0(a);
+          maj = Maj(a, b, c);
+          t2 = (s0 + maj)|0;
+          s1 = Sigma1(e);
+          ch = Ch(e, f, g);
+          t1 = (h + s1 + ch + (H[i>>2]|0) + (H[(W+i)>>2]|0))|0;
+
+          h = g;
+          g = f;
+          f = e;
+          e = (d + t1)|0;
+          d = c;
+          c = b;
+          b = a;
+          a = (t1 + t2)|0;
         }
 
-        s0 = Sigma0(a);
-        maj = Maj(a, b, c);
-        t2 = (s0 + maj)|0;
-        s1 = Sigma1(e);
-        ch = Ch(e, f, g);
-        t1 = (h + s1 + ch + (H[i>>2]|0) + (H[(W+i)>>2]|0))|0;
-
-        h = g;
-        g = f;
-        f = e;
-        e = (d + t1)|0;
-        d = c;
-        c = b;
-        b = a;
-        a = (t1 + t2)|0;
-
-        i = (i + 4)|0;
+        h0 = (h0 + a)|0;
+        h1 = (h1 + b)|0;
+        h2 = (h2 + c)|0;
+        h3 = (h3 + d)|0;
+        h4 = (h4 + e)|0;
+        h5 = (h5 + f)|0;
+        h6 = (h6 + g)|0;
+        h7 = (h7 + h)|0;
+        start = (start + 64)|0;
       }
 
-      H[(W+ 0)>>2] = (h0 + a)|0;
-      H[(W+ 4)>>2] = (h1 + b)|0;
-      H[(W+ 8)>>2] = (h2 + c)|0;
-      H[(W+12)>>2] = (h3 + d)|0;
-      H[(W+16)>>2] = (h4 + e)|0;
-      H[(W+20)>>2] = (h5 + f)|0;
-      H[(W+24)>>2] = (h6 + g)|0;
-      H[(W+28)>>2] = (h7 + h)|0;
-      return h0|0;
+      H[128] = h0;
+      H[129] = h1;
+      H[130] = h2;
+      H[131] = h3;
+      H[132] = h4;
+      H[133] = h5;
+      H[134] = h6;
+      H[135] = h7;
     }
 
     return {
+      init: init,
       run: run
     };
   }
@@ -140,9 +178,68 @@
   var int8 = new Int8Array(heap);
   int32.set(K);
 
-  var offset = K.length + 64;
-
   var mod = module(window, {}, heap);
+
+  var nums = "01234567890abcdef";
+  var offset = 0;
+  var size = 0;
+
+  window.sha256 = {
+    init: function() {
+      size = 0;
+      mod.init();
+    },
+
+    update: function(buffer) {
+      var i, length, view, stop, blocks;
+
+      length = buffer.length;
+      size += length;
+      blocks = (length + offset) >> 6;
+      extra = (length + offset) & 63;
+
+      // Write whole blocks
+      for (i = 0; i < length - extra; i++) {
+        int8[548 + offset + i] = buffer.charCodeAt(i);
+      }
+
+      if (blocks) {
+        int32[136] = blocks;
+        mod.run();
+      }
+
+      // Write the extra bytes
+      offset = extra;
+      for (i = length - extra; i < length; i++) {
+        int8[548 + i] = buffer.charCodeAt(i);
+      }
+    },
+
+    finish: function() {
+      // write 1 bit
+      int8[548 + offset] = 128;
+      // write 0 bits
+      for (var i = offset+1; i < 64; i++) {
+        int8[548 + i] = 0;
+      }
+      // write size
+      int8[548 + i - 1] = size * 8;
+      int32[136] = 1;
+      // run the last blocks
+      mod.run();
+
+      var str = "";
+      for (var i = 0; i < 8; i++) {
+        var h = int32[128+i].toString(16);
+        var leading = (8 - h.length);
+        while (leading--) str += "0";
+        str += h;
+      }
+      return str;
+    }
+  };
+
+  return;
 
   window.sha256 = function(buffer, time) {
     var view = new Uint8Array(buffer);

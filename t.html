@@ -1,8 +1,10 @@
 <script src="sha256.js"></script>
 <script>
-  var data = new ArrayBuffer(12);
-  var view = new Uint8Array(data);
-  var str = "Hello world!";
+  sha256.init();
+  sha256.update("Hello world!");
+  var res = sha256.finish();
+  console.log(res);
+  throw 1;
 
   for (var i = 0; i < str.length; i++) {
     view[i] = str.charCodeAt(i);
