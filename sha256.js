@@ -85,7 +85,8 @@
       H[135] = 0x5BE0CD19;
     }
 
-    function run() {
+    function run(blocks) {
+      blocks = blocks|0;
       var h0 = 0, h1 = 0, h2 = 0, h3 = 0, h4 = 0, h5 = 0, h6 = 0, h7 = 0;
       var a = 0, b = 0, c = 0, d = 0, e = 0, f = 0, g = 0, h = 0;
 
@@ -94,7 +95,6 @@
 
       var i = 0;
       var s0 = 0, s1 = 0, maj = 0, t2 = 0, ch = 0, t1 = 0;
-      var blocks = 0;
 
       h0 = H[128]|0;
       h1 = H[129]|0;
@@ -106,7 +106,7 @@
       h7 = H[135]|0;
 
       // Loop over the blocks
-      for (blocks = H[136]|0; blocks; blocks = (blocks - 1)|0) {
+      for (; blocks; blocks = (blocks - 1)|0) {
         a = h0;
         b = h1;
         c = h2;
@@ -212,8 +212,7 @@
     writeBuffer(this.int8, buffer, 0, boundary, this.offset);
 
     if (blocks) {
-      this.int32[136] = blocks;
-      this.mod.run();
+      this.mod.run(blocks);
     }
 
     // Write the extra bytes
@@ -234,8 +233,7 @@
     this.int8[548 + i - 2] = bitsize >> 8;
 
     // run the last blocks
-    this.int32[136] = 1;
-    this.mod.run();
+    this.mod.run(1);
   },
 
   sha256.prototype.finish = function() {
