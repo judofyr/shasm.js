@@ -1,8 +1,6 @@
 (function() {
+  "use strict";
   // Adapted from https://github.com/progranism/Bitcoin-JavaScript-Miner/blob/master/sha256.js
-  // TODO: Handle more than one block
-  // TODO: Change API to support updates
-
   // Heap structure (in 32-bit numbers)
   //    0 -  63: K array
   //   64 - 127: W array
@@ -173,98 +171,86 @@
 
   var K = [0x428A2F98, 0x71374491, 0xB5C0FBCF, 0xE9B5DBA5, 0x3956C25B, 0x59F111F1, 0x923F82A4, 0xAB1C5ED5, 0xD807AA98, 0x12835B01, 0x243185BE, 0x550C7DC3, 0x72BE5D74, 0x80DEB1FE, 0x9BDC06A7, 0xC19BF174, 0xE49B69C1, 0xEFBE4786, 0xFC19DC6, 0x240CA1CC, 0x2DE92C6F, 0x4A7484AA, 0x5CB0A9DC, 0x76F988DA, 0x983E5152, 0xA831C66D, 0xB00327C8, 0xBF597FC7, 0xC6E00BF3, 0xD5A79147, 0x6CA6351, 0x14292967, 0x27B70A85, 0x2E1B2138, 0x4D2C6DFC, 0x53380D13, 0x650A7354, 0x766A0ABB, 0x81C2C92E, 0x92722C85, 0xA2BFE8A1, 0xA81A664B, 0xC24B8B70, 0xC76C51A3, 0xD192E819, 0xD6990624, 0xF40E3585, 0x106AA070, 0x19A4C116, 0x1E376C08, 0x2748774C, 0x34B0BCB5, 0x391C0CB3, 0x4ED8AA4A, 0x5B9CCA4F, 0x682E6FF3, 0x748F82EE, 0x78A5636F, 0x84C87814, 0x8CC70208, 0x90BEFFFA, 0xA4506CEB, 0xBEF9A3F7, 0xC67178F2];
 
-  var heap = new ArrayBuffer(4096);
-  var int32 = new Uint32Array(heap);
-  var int8 = new Int8Array(heap);
-  int32.set(K);
-
-  var mod = module(window, {}, heap);
-
   var nums = "01234567890abcdef";
-  var offset = 0;
-  var size = 0;
 
-  window.sha256 = {
-    init: function() {
-      size = 0;
-      mod.init();
-    },
-
-    update: function(buffer) {
-      var i, length, view, stop, blocks;
-
-      length = buffer.length;
-      size += length;
-      blocks = (length + offset) >> 6;
-      extra = (length + offset) & 63;
-
-      // Write whole blocks
-      for (i = 0; i < length - extra; i++) {
-        int8[548 + offset + i] = buffer.charCodeAt(i);
+  function writeBuffer(target, buffer, from, to, offset) {
+    if (typeof buffer == 'string') {
+      for (var i = from; i < to; i++) {
+        target[548 + offset + i] = buffer.charCodeAt(i);
       }
-
-      if (blocks) {
-        int32[136] = blocks;
-        mod.run();
-      }
-
-      // Write the extra bytes
-      offset = extra;
-      for (i = length - extra; i < length; i++) {
-        int8[548 + i] = buffer.charCodeAt(i);
-      }
-    },
-
-    finish: function() {
-      // write 1 bit
-      int8[548 + offset] = 128;
-      // write 0 bits
-      for (var i = offset+1; i < 64; i++) {
-        int8[548 + i] = 0;
-      }
-      // write size
-      int8[548 + i - 1] = size * 8;
-      int32[136] = 1;
-      // run the last blocks
-      mod.run();
-
-      var str = "";
-      for (var i = 0; i < 8; i++) {
-        var h = int32[128+i].toString(16);
-        var leading = (8 - h.length);
-        while (leading--) str += "0";
-        str += h;
-      }
-      return str;
+    } else {
+      // Writes an Int8Array
+      target.set(buffer.subarray(from, to), 548 + offset);
     }
+  }
+
+  function sha256(heapSize) {
+    var heap = new ArrayBuffer(heapSize || 4096);
+    this.mod = module(window, {}, heap);
+    this.int8 = new Int8Array(heap);
+    this.int32 = new Uint32Array(heap);
+    this.int32.set(K);
+    this.chunkLimit = this.int8.length - 548;
+  }
+
+  sha256.prototype.init = function() {
+    this.totalSize = 0;
+    this.offset = 0;
+    this.mod.init();
   };
 
-  return;
+  sha256.prototype.update = function(buffer) {
+    var length, view, blocks, extra, boundary;
 
-  window.sha256 = function(buffer, time) {
-    var view = new Uint8Array(buffer);
-    int32[offset] = view.length;
+    length = buffer.length;
+    if (length > this.chunkLimit) throw "too big chunk";
+    this.totalSize += length;
+    blocks = (length + this.offset) >> 6;
+    extra = (length + this.offset) & 63;
+    boundary = length - extra;
 
-    var start = offset+1;
-    int8.set(view, start*4);
-    // Append 1 bit
-    int8[(start*4) + view.length] = 128;
-    // Append the length
-    int8[(start+16)*4-1] = view.length * 8;
-    mod.run();
+    writeBuffer(this.int8, buffer, 0, boundary, this.offset);
 
-    // Don't generate final hexdigest
-    if (time) return;
+    if (blocks) {
+      this.int32[136] = blocks;
+      this.mod.run();
+    }
 
+    // Write the extra bytes
+    writeBuffer(this.int8, buffer, boundary, length, 0);
+    this.offset = extra;
+  };
+
+  sha256.prototype.finalUpdate = function() {
+    // write 1 bit
+    this.int8[548 + this.offset] = 128;
+    // write 0 bits
+    for (var i = this.offset+1; i < 64; i++) {
+      this.int8[548 + i] = 0;
+    }
+    // write size
+    var bitsize = this.totalSize * 8;
+    this.int8[548 + i - 1] = bitsize & 255;
+    this.int8[548 + i - 2] = bitsize >> 8;
+
+    // run the last blocks
+    this.int32[136] = 1;
+    this.mod.run();
+  },
+
+  sha256.prototype.finish = function() {
+    this.finalUpdate();
+    // create hex
     var str = "";
-    var nums = "01234567890abcdef";
     for (var i = 0; i < 8; i++) {
-      var h = int32[K.length+i].toString(16);
+      var h = this.int32[128+i].toString(16);
       var leading = (8 - h.length);
       while (leading--) str += "0";
       str += h;
     }
     return str;
   }
+
+  window.sha256 = sha256;
 })();
 

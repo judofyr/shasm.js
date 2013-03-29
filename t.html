@@ -1,21 +1,19 @@
 <script src="sha256.js"></script>
 <script>
-  sha256.init();
-  sha256.update("Hello world!");
-  var res = sha256.finish();
-  console.log(res);
-  throw 1;
-
-  for (var i = 0; i < str.length; i++) {
-    view[i] = str.charCodeAt(i);
+  var a = new ArrayBuffer(4000);
+  var view = new Int8Array(a);
+  for (var i = 0; i < view.length; i++) {
+    view[i] = "a".charCodeAt(0);
   }
 
-  document.write(sha256(data));
-  document.write('<br>');
+  var s = new sha256(1024 * 8);
+  s.init();
+  s.update(view);
+  document.write(s.finish() + '<br>');
 
   var now = new Date;
-  var n = i = 100000;
-  while (i--) sha256(data, true);
+  var n = i = 1000;
+  while (i--) { s.init(); s.update(view) }
   document.write("Computed " + n + " hashes in " + (new Date - now) + " ms");
 </script>
 
