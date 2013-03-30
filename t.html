@@ -9,7 +9,7 @@
   var s = new sha256(1024 * 8);
   s.init();
   s.update(view);
-  document.write(s.finish() + '<br>');
+  document.write(s.final() + '<br>');
 
   var now = new Date;
   var n = i = 1000;

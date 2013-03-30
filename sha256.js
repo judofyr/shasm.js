@@ -236,7 +236,7 @@
     this.mod.run(1);
   },
 
-  sha256.prototype.finish = function() {
+  sha256.prototype.final = function() {
     this.finalUpdate();
     // create hex
     var str = "";
