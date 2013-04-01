@@ -18,3 +18,8 @@ test("exactly one block", function() {
   equal("ffe054fe7ae0cb6dc65c3af9b61d5209f439851db43d0ba5997337df154668eb", s.final());
 });
 
+test("multiple updates", function() {
+  s.update("Hello ");
+  s.update("world!");
+  equal("c0535e4be2b79ffd93291305436bf889314e4a3faec05ecffcbb7df31ad9e51a", s.final());
+});

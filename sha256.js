@@ -208,6 +208,7 @@
     blocks = (length + this.offset) >> 6;
     extra = (length + this.offset) & 63;
     boundary = length - extra;
+    if (boundary < 0) boundary = 0;
 
     writeBuffer(this.int8, buffer, 0, boundary, this.offset);
 
@@ -216,7 +217,7 @@
     }
 
     // Write the extra bytes
-    writeBuffer(this.int8, buffer, boundary, length, 0);
+    writeBuffer(this.int8, buffer, boundary, length, this.offset);
     this.offset = extra;
   };
 
