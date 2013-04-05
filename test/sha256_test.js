@@ -23,3 +23,21 @@ test("multiple updates", function() {
   s.update("world!");
   equal(s.final(), "c0535e4be2b79ffd93291305436bf889314e4a3faec05ecffcbb7df31ad9e51a");
 });
+
+test("multiple blocks", function() {
+  s.update("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+  equal(s.final(), "635361c48bb9eab14198e76ea8ab7f1a41685d6ad62aa9146d301d4f17eb0ae0");
+});
+
+test("multiple blocks across several updates", function() {
+  s.update("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+  s.update("aaaaa");
+  equal(s.final(), "635361c48bb9eab14198e76ea8ab7f1a41685d6ad62aa9146d301d4f17eb0ae0");
+});
+
+test("bigger than heap", function() {
+  throws(function() {
+    s.update(Array(10000).join('a'));
+  });
+});
+
